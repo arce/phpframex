@@ -50,7 +50,7 @@ class Route {
     self::get($uri.'/(:string)', $controller.'@show');
     self::get($uri.'/(:string)/edit',$controller.'@edit');
     self::put($uri.'/(:string)',$controller.'@update');
-    self::delete($uri.'/:(string)',$controller.'@destroy');
+    self::delete($uri.'/(:string)',$controller.'@destroy');
   }
 
   /**
@@ -142,6 +142,8 @@ class Route {
               // Grab the controller name and method call
               $segments = explode('@',$last);
 
+              require_once('controllers/'.$segments[0].'.php');
+              
               // Instanitate controller
               $controller = new $segments[0]();
 
@@ -218,10 +220,6 @@ class Template {
     public function assign( $key, $value ) {
         $this->vars[$key] = $value;
     }
-
-    public function reset() {
-        $this->vars = array();
-    }
     
     /**
      * Parce template file
@@ -231,7 +229,6 @@ class Template {
     public function parse( $template_file ) {
         if ( file_exists( $template_file ) ) {
             $content = file_get_contents($template_file);
-
             foreach ( $this->vars as $key => $value ) {
                 if ( is_array( $value ) ) {
                     $content = $this->parsePair($key, $value, $content);
@@ -239,8 +236,11 @@ class Template {
                     $content = $this->parseSingle($key, (string) $value, $content);
                 }
             }
-
-            eval( '?> ' . $content . '<?php ' );
+            try {
+                eval('?> ' . $content . '<?php ' );
+            } catch (Throwable $t) {
+                $content = null;
+            }
         } else {
             exit( '<h1>Template error</h1>' );
         }
@@ -259,7 +259,7 @@ class Template {
         if ( isset( $index ) ) {
             $string = str_replace( $this->l_delim . '%index%' . $this->r_delim, $index, $string );
         }
-        return str_replace( $this->l_delim . $key . $this->r_delim, $value, $string );
+        return str_replace( $this->l_delim . $key . $this->r_delim, strip_tags($value), $string );
     }
 
     /**
@@ -311,10 +311,10 @@ function view($filename,$variables=[]) {
     if (!isset($template)) {
       $template = new Template();
     }
-    $template->reset();
     foreach ($variables as $key => $value) {
-      $template->assign(key,value);
+      $template->assign($key,$value);
     }
+    extract($variables);
     $template->parse('views/'.$filename.'.php');
 }
 
