@@ -208,8 +208,7 @@ class Template {
      * @access private
      * @var string
      */
-    private $l_delim = '{',
-            $r_delim = '}';
+    private $l_delim = '{{', $r_delim = '}}';
 
     /**
      * Set template property in template file
@@ -230,7 +229,8 @@ class Template {
         if ( file_exists( $template_file ) ) {
             $content = file_get_contents($template_file);
             foreach ( $this->vars as $key => $value ) {
-                if ( is_array( $value ) ) {
+                $$key = $value;
+                if ( is_array( $value ) || is_bool( $value) ) {
                     $content = $this->parsePair($key, $value, $content);
                 } else {
                     $content = $this->parseSingle($key, (string) $value, $content);
@@ -257,7 +257,7 @@ class Template {
      */
     private function parseSingle( $key, $value, $string, $index = null ) {
         if ( isset( $index ) ) {
-            $string = str_replace( $this->l_delim . '%index%' . $this->r_delim, $index, $string );
+            $string = str_replace( $this->l_delim . '.' . $this->r_delim, $index, $string );
         }
         return str_replace( $this->l_delim . $key . $this->r_delim, strip_tags($value), $string );
     }
@@ -273,7 +273,20 @@ class Template {
     private function parsePair( $variable, $data, $string ) {
         $match = $this->matchPair($string, $variable);
         if( $match == false ) return $string;
-
+        
+        if (is_bool($data)) {
+            $start = $this->l_delim . '#'. $variable . $this->r_delim;
+            $end = $this->l_delim . '\/'. $variable . $this->r_delim;
+            $endx = $this->l_delim . '/'. $variable . $this->r_delim;
+            if ($data==false)
+                $string = preg_replace('/'.$start.'[\s\S]+?'.$end.'/', '', $string);
+            else {
+                $string = str_replace($start,'',$string);
+                $string = str_replace($endx,'',$string);
+            }
+            return $string;
+        }
+        
         $str = '';
         foreach ( $data as $k_row => $row ) {
             $temp = $match['1'];
@@ -299,7 +312,7 @@ class Template {
      * @return string matched content
      */
     private function matchPair( $string, $variable ) {
-        if ( !preg_match("|" . preg_quote($this->l_delim) . 'loop ' . $variable . preg_quote($this->r_delim) . "(.+?)". preg_quote($this->l_delim) . 'end loop' . preg_quote($this->r_delim) . "|s", $string, $match ) ) {
+        if ( !preg_match("|" . preg_quote($this->l_delim) . '#' . $variable . preg_quote($this->r_delim) . "(.+?)". preg_quote($this->l_delim) . '/' . $variable . preg_quote($this->r_delim) . "|s", $string, $match ) ) {
             return false;
         }
 
@@ -314,7 +327,6 @@ function view($filename,$variables=[]) {
     foreach ($variables as $key => $value) {
       $template->assign($key,$value);
     }
-    extract($variables);
     $template->parse('views/'.$filename.'.php');
 }
 
