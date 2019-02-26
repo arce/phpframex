@@ -190,6 +190,8 @@ function redirect($url, $statusCode = 303) {
   header('Location: ' . $url, true, $statusCode);
   die();
 }
+?>
+<?php
 
 /**
 * Template engine
@@ -209,6 +211,14 @@ class Template {
      * @var string
      */
     private $l_delim = '{{', $r_delim = '}}';
+    
+    public function countDim($array) {
+      if (is_array(reset($array)))
+        $dim = $this->countDim(reset($array)) + 1;
+      else
+        $dim = 1;
+      return $dim;
+    }
 
     /**
      * Set template property in template file
@@ -231,6 +241,7 @@ class Template {
             foreach ( $this->vars as $key => $value ) {
                 $$key = $value;
                 if ( is_array( $value ) || is_bool( $value) ) {
+					if ($this->countDim($value)==1) $value = [$value];
                     $content = $this->parsePair($key, $value, $content);
                 } else {
                     $content = $this->parseSingle($key, (string) $value, $content);
@@ -329,6 +340,44 @@ function view($filename,$variables=[]) {
     }
     $template->parse('views/'.$filename.'.php');
 }
+?>
+<?php
+/**
+ * Model Class
+ * @author  Armando Arce <armando.arce@gmail.com>
+ */
+
+class Model {
+  
+  public static function all() {}
+  public static function find($id) {  }  
+  public static function update($id,$item) {}  
+  public static function create($item) {}  
+  public static function destroy($id) {}  
+}
+?>
+<?php
+/**
+ * Controller Class
+ * @author  Armando Arce <armando.arce@gmail.com>
+ */
+
+class Controller {
+  
+  public function index() {}
+  public function create() {}
+  public function store() {}
+  public function show($id) {}
+  public function edit($id) {}
+  public function update($id) {}
+  public function destroy($id) {}
+}
+?>
+<?php
+/**
+ * Input Class
+ * @author  Armando Arce <armando.arce@gmail.com>
+ */
 
 class Input {
   public static $routes = array();
@@ -337,3 +386,4 @@ class Input {
       return $_REQUEST[$name];
   }
 }
+?>
