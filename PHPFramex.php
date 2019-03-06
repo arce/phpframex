@@ -342,6 +342,25 @@ function view($filename,$variables=[]) {
 }
 ?>
 <?php
+
+abstract class Database {
+    protected   $conn;
+    public      $db_config;
+
+    /*
+    * create database connection
+    */
+    public function __construct()
+    {
+        if (empty($this->db_config)) {
+            $this->db_config = parse_ini_file('config.ini');
+        }
+
+        $this->conn = new \PDO("sqlite:{$this->db_config['db_name']}");
+    }
+}
+?>
+<?php
 /**
  * Model Class
  * @author  Armando Arce <armando.arce@gmail.com>
@@ -349,11 +368,98 @@ function view($filename,$variables=[]) {
 
 class Model {
   
-  public static function all() {}
-  public static function find($id) {  }  
-  public static function update($id,$item) {}  
-  public static function create($item) {}  
-  public static function destroy($id) {}  
+  protected static $table = '';
+  protected static $primaryKey = 'id';
+  protected static $db_config;
+  protected static $dbh;
+  protected static $stmt;
+  
+  public static function init() {
+    if (empty(self::$db_config)) {
+      self::$db_config = parse_ini_file('config.ini');
+    }
+    
+    self::$dbh = new PDO(self::$db_config['db_driver'].
+                         ":".self::$db_config['db_name']);
+    if (empty(self::$dbh)) {
+	  echo 'Database not found';
+	}
+  }
+  
+  public static function all() {
+	if (empty(self::$db_config)) {
+	  self::init();
+    }
+    self::$dbh->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+	self::$stmt = self::$dbh->prepare("SELECT * FROM ".static::$table);
+	self::$stmt->execute();
+    $data = Array();
+    while ($result = self::$stmt->fetch(PDO::FETCH_ASSOC)) {
+      $data[] = $result;
+    }
+    return $data;
+  }
+  
+  public static function find($id) {
+	if (empty(self::$db_config)) {
+	  self::init();
+    }
+    self::$dbh->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+	self::$stmt = self::$dbh->prepare("SELECT * FROM ".static::$table.
+	                            " WHERE ".static::$primaryKey." = :id");
+	self::$stmt->bindParam(':id', $id);
+	self::$stmt->execute();
+    $data = Array();
+    while ($result = self::$stmt->fetch(PDO::FETCH_ASSOC)) {
+      $data[] = $result;
+    }
+    return $data;
+  }
+  
+  public static function create($item) {
+	if (empty(self::$db_config)) {
+	  self::init();
+    }
+    self::$dbh->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+    $fieldNames = implode(",",array_keys($item));
+    $fieldValues = implode("','",array_values($item));
+	self::$stmt = self::$dbh->prepare("INSERT INTO ".static::$table.
+	                  " (".$fieldNames.") VALUES ('".$fieldValues."')");
+	self::$dbh->beginTransaction();
+    self::$stmt->execute();
+    self::$dbh->commit();
+  }
+  
+  public static function update($id,$item) {
+	if (empty(self::$db_config)) {
+	  self::init();
+    }
+    $values = [];
+    foreach($item as $key => $value) {
+      $values[] = $key . " = '" . $value . "'";
+    }
+    self::$dbh->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+	self::$stmt = self::$dbh->prepare("UPDATE ".static::$table." SET ".
+	         join(", ",$values)." WHERE ".static::$primaryKey." = :id");
+	self::$stmt->bindParam(':id', $id);
+	self::$dbh->beginTransaction();
+    self::$stmt->execute();
+    self::$dbh->commit();
+  }
+  
+
+  public static function destroy($id) {
+	if (empty(self::$db_config)) {
+	  self::init();
+    }
+    self::$dbh->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+	self::$stmt = self::$dbh->prepare("DELETE FROM ".static::$table.
+	                            " WHERE ".static::$primaryKey." = :id");
+	self::$stmt->bindParam(':id', $id);
+    self::$dbh->beginTransaction();
+    self::$stmt->execute();
+    self::$dbh->commit();
+  }
 }
 ?>
 <?php
@@ -362,7 +468,7 @@ class Model {
  * @author  Armando Arce <armando.arce@gmail.com>
  */
 
-class Controller {
+abstract class Controller {
   
   public function index() {}
   public function create() {}
@@ -380,10 +486,9 @@ class Controller {
  */
 
 class Input {
-  public static $routes = array();
 
   public static function get($name) {
-      return $_REQUEST[$name];
+	return htmlspecialchars($_REQUEST[$name]);
   }
 }
 ?>
