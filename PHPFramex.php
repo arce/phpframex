@@ -238,6 +238,16 @@ class Template {
     public function parse( $template_file ) {
         if ( file_exists( $template_file ) ) {
             $content = file_get_contents($template_file);
+            while (true) {
+              $start = strpos($content,'{{>');
+              if ($start === false) break;
+              $end = strpos($content,'}}',$start);
+              if ($end === false) break;
+              $partial_file = substr($content,$start+4,$end-$start-4);
+              $partial = file_get_contents('views/'.$partial_file.'.php');
+              $partial_tag = substr($content,$start,$end-$start+2);
+              $content = str_replace($partial_tag,$partial,$content);
+		    }
             foreach ( $this->vars as $key => $value ) {
                 $$key = $value;
                 if ( is_array( $value ) || is_bool( $value) ) {
@@ -342,11 +352,9 @@ function view($filename,$variables=[]) {
 }
 ?>
 <?php
-
 abstract class Database {
     protected   $conn;
     public      $db_config;
-
     /*
     * create database connection
     */
@@ -355,7 +363,6 @@ abstract class Database {
         if (empty($this->db_config)) {
             $this->db_config = parse_ini_file('config.ini');
         }
-
         $this->conn = new \PDO("sqlite:{$this->db_config['db_name']}");
     }
 }
