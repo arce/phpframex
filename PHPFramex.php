@@ -196,6 +196,7 @@ function redirect($url, $statusCode = 303) {
 /**
 * Template engine
 * @author  Ruslan Ismagilov <ruslan.ismagilov.ufa@gmail.com>
+* @contributor  Armando Arce <armando.arce@gmail.com>
 */
 class Template {
     /**
@@ -213,6 +214,7 @@ class Template {
     private $l_delim = '{{', $r_delim = '}}';
     
     public function countDim($array) {
+	  if (is_bool($array)) return 0;
       if (is_array(reset($array)))
         $dim = $this->countDim(reset($array)) + 1;
       else
@@ -251,7 +253,7 @@ class Template {
             foreach ( $this->vars as $key => $value ) {
                 $$key = $value;
                 if ( is_array( $value ) || is_bool( $value) ) {
-					if ($this->countDim($value)==1) $value = [$value];
+					if ($this->countDim($value)<=1) $value = [$value];
                     $content = $this->parsePair($key, $value, $content);
                 } else {
                     $content = $this->parseSingle($key, (string) $value, $content);
@@ -293,18 +295,30 @@ class Template {
      */
     private function parsePair( $variable, $data, $string ) {
         $match = $this->matchPair($string, $variable);
-        if( $match == false ) return $string;
+        if (!$match) return $string;
         
-        if (is_bool($data)) {
-            $start = $this->l_delim . '#'. $variable . $this->r_delim;
-            $end = $this->l_delim . '\/'. $variable . $this->r_delim;
+        if (is_bool($data[0])) {
+			$start = $this->l_delim . '#'. $variable . $this->r_delim;
+			$end = $this->l_delim . '\/'. $variable . $this->r_delim;
             $endx = $this->l_delim . '/'. $variable . $this->r_delim;
-            if ($data==false)
-                $string = preg_replace('/'.$start.'[\s\S]+?'.$end.'/', '', $string);
+            
+            if (!$data[0])
+              $string = preg_replace('/'.$start.'[\s\S]+?'.$end.'/', '', $string);
             else {
-                $string = str_replace($start,'',$string);
-                $string = str_replace($endx,'',$string);
-            }
+			  $string = str_replace($start,'',$string);
+              $string = str_replace($endx,'',$string);
+			}
+
+            $start = $this->l_delim . '^'. $variable . $this->r_delim;
+			$startx = $this->l_delim . '\^'. $variable . $this->r_delim;
+            $end = $this->l_delim . '~'. $variable . $this->r_delim;
+            
+            if ($data[0])
+              $string = preg_replace('/'.$startx.'[\s\S]+?'.$end.'/', '', $string);
+            else {
+			  $string = str_replace($start,'',$string);
+              $string = str_replace($end,'',$string);
+			}
             return $string;
         }
         
@@ -352,36 +366,119 @@ function view($filename,$variables=[]) {
 }
 ?>
 <?php
-abstract class Database {
-    protected   $conn;
-    public      $db_config;
-    /*
-    * create database connection
-    */
-    public function __construct()
-    {
-        if (empty($this->db_config)) {
-            $this->db_config = parse_ini_file('config.ini');
-        }
-        $this->conn = new \PDO("sqlite:{$this->db_config['db_name']}");
-    }
+/**
+ * Query Class
+ * @author  Armando Arce <armando.arce@gmail.com>
+*/
+
+class Query {
+
+  public $params = [];
+  
+  public function where($field,$value,$extra=null) {
+	$this->params['where'] = [$field=>$value];
+	return $this;
+  }
+  
+  public function orWhere($field,$value,$extra=null) {
+	$this->params['where'] = [$field=>$value];
+	return $this;
+  }
+  
+  public function distinct() {
+	$this->params['distinct'] = true;
+	return $this;
+  }
+  
+  public function orderBy($field,$ord) {
+	if (!array_key_exists('fields',$this->params))
+	  $this->params['fields'] = [];
+	if (is_string($fields))
+	  $fields = [$fields];
+	$this->params['fields'] = array_merge($this->params['fields'],$fields);
+	return $this;
+  }
+  
+  public function groupBy($fields) {
+	if (!array_key_exists('group',$this->params))
+	  $this->params['group'] = [];
+	if (is_string($fields))
+	  $fields = [$fields];
+	$this->params['group'] = array_merge($this->params['group'],$fields);
+	return $this;
+  }
+  
+  public function having($field) {
+	return $this;
+  }
+  
+  public function skip($num) {
+	$this->params['skip'] = $num;
+	return $this;
+  }
+  
+  public function limit($num) {
+	$this->params['limit'] = $num;
+	return $this;
+  }
+  
+  public function select($fields) {
+	if (!array_key_exists('fields',$this->params))
+	  $this->params['fields'] = [];
+	if (is_string($fields))
+	  $fields = [$fields];
+	$this->params['fields'] = array_merge($this->params['fields'],$fields);
+	return $this;
+  }
+  
+  public function first() {
+	$this->params['limit'] = 1;
+	return DB::_select($this->params);
+  }
+  
+  public function find($id) {
+	$this->params['where'] = ['id'=>$id];
+	return DB::_select($this->params);
+  }
+  
+  public function get() {
+	return DB::_select($this->params);
+  }
+  
+  public function insert($item) {
+	DB::_insert($this->params,$item);
+  }
+  
+  public function update($id,$item) {
+	$this->params['where'] = ['id'=>$id];
+	DB::_update($this->params,$item);
+  }
+  
+  public function delete($id) {
+	$this->params['where'] = ['id'=>$id];
+	DB::_delete($this->params);
+  }
 }
+
 ?>
 <?php
 /**
- * Model Class
+ * DB Class
  * @author  Armando Arce <armando.arce@gmail.com>
- */
+*/
+ 
+class DB {
 
-class Model {
-  
-  protected static $table = '';
-  protected static $primaryKey = 'id';
   protected static $db_config;
   protected static $dbh;
-  protected static $stmt;
   
-  public static function init() {
+  public function __construct() {
+	if (empty(self::$db_config)) {
+	  self::init();
+    }
+  }
+  
+  private static function init() {
     if (empty(self::$db_config)) {
       self::$db_config = parse_ini_file('config.ini');
     }
@@ -393,81 +490,165 @@ class Model {
 	}
   }
   
-  public static function all() {
+  private static function fields($fields) {
+	$result = array_keys($fields);
+    return implode(',', $result);
+  }
+  
+  private static function conditions($conditions,$sep) {
+    $result = [];
+    foreach ($conditions as $k => $v)
+      $result[] = $k."= ?";
+    return implode($sep, $result);
+  }
+
+  private static function execute($query,$values) {
+	if (empty(self::$db_config)) {
+	  self::init();
+    }
+	self::$dbh->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+	$stmt = self::$dbh->prepare($query);
+	foreach ($values as $k => $v)
+	  $stmt->bindValue($k+1,$v);
+	self::$dbh->beginTransaction();
+    $stmt->execute();
+    self::$dbh->commit();
+  }
+  
+  public static function table($tableName) {
+    $qry = new Query();
+	$qry->params['table'] = $tableName;
+	return $qry;
+  }
+  
+  public static function select($query,$values) {
 	if (empty(self::$db_config)) {
 	  self::init();
     }
     self::$dbh->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-	self::$stmt = self::$dbh->prepare("SELECT * FROM ".static::$table);
-	self::$stmt->execute();
+    self::$dbh->setAttribute(PDO::ATTR_EMULATE_PREPARES, true);
+	$stmt = self::$dbh->prepare($query);
+	foreach ($values as $k => $v)
+	  $stmt->bindValue($k+1,$v);
+	$stmt->execute();
     $data = Array();
-    while ($result = self::$stmt->fetch(PDO::FETCH_ASSOC)) {
+    while ($result = $stmt->fetch(PDO::FETCH_ASSOC)) {
       $data[] = $result;
     }
     return $data;
+  }
+  
+  public static function _select($params) {
+    $query = "SELECT ";
+    if (array_key_exists('fields',$params))
+      $query .= self::fields($params['fields']);
+    else
+      $query .= "*";
+    $query .= " FROM ".$params['table'];
+    $values = [];
+    if (array_key_exists('where',$params)) {
+      $query .= " WHERE ".self::conditions($params['where'],' AND ');
+      $values = array_values($params['where']); 
+    }
+    if (array_key_exists('group',$params))
+      $query .= " GROUP BY ".self::fields($params['group']);
+    if (array_key_exists('having',$params)) 
+      $query .= " HAVING ".self::conditions($params['having']);
+    if (array_key_exists('order',$params))
+      $query .= " ORDER BY ".self::fields($params['order']);
+    if (array_key_exists('limit',$params))
+      $query .= "LIMIT ".$params['limit'];
+    if (array_key_exists('skip',$params))
+      $query .= "OFFSET ".$params['skip'];
+    return self::select($query,$values);
+  }
+ 
+  public static function insert($query,$values) {
+	self::execute($query,$values);
+  }
+   
+  public static function _insert($params,$item) {
+    $query = "INSERT INTO ".$params['table'];
+    $query .= " ( ".self::fields(array_keys($item))." ) ";
+    $query .= " VALUES ( ".self::fields(array_values($item))." ) ";
+    $values = array_values($item);
+    self::execute($query,$values);
+  }
+  
+  public static function update($query,$values) {
+	self::execute($query,$values);
+  }
+  
+  public static function _update($params,$item) {
+    $query = "UPDATE ".$params['table']." SET ";
+    $query .= self::conditions($item,',');
+    $query .= " WHERE ".self::conditions($params['where'],' AND ');
+    $values = array_values($item);
+    $values = array_merge($values,array_values($params['where']));
+    self::execute($query,$values);
+  }
+  
+  public static function delete($query,$values) {
+	self::execute($query,$values);
+  }
+  
+  public static function _delete($params) {
+    $query = "DELETE FROM ".$params['table'];
+    $query .= " WHERE ".self::conditions($params['where'],' AND ');
+    $values = array_values($params['where']);
+    self::execute($query,$values);
+  }
+}
+
+?>
+<?php
+/**
+ * Model Class
+ * @author  Armando Arce <armando.arce@gmail.com>
+*/
+
+class Model {
+
+  protected static $table = '';
+  protected static $columns = '';
+  protected static $primaryKey = 'id';
+
+  public static function all() {
+	$params = ['table' => static::$table];
+	return DB::_select($params);
   }
   
   public static function find($id) {
-	if (empty(self::$db_config)) {
-	  self::init();
-    }
-    self::$dbh->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-	self::$stmt = self::$dbh->prepare("SELECT * FROM ".static::$table.
-	                            " WHERE ".static::$primaryKey." = :id");
-	self::$stmt->bindParam(':id', $id);
-	self::$stmt->execute();
-    $data = Array();
-    while ($result = self::$stmt->fetch(PDO::FETCH_ASSOC)) {
-      $data[] = $result;
-    }
-    return $data;
+	$params = ['table'=>static::$table,'where'=>['id'=>$id]];
+	return DB::_select($params);
   }
   
   public static function create($item) {
-	if (empty(self::$db_config)) {
-	  self::init();
-    }
-    self::$dbh->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-    $fieldNames = implode(",",array_keys($item));
-    $fieldValues = implode("','",array_values($item));
-	self::$stmt = self::$dbh->prepare("INSERT INTO ".static::$table.
-	                  " (".$fieldNames.") VALUES ('".$fieldValues."')");
-	self::$dbh->beginTransaction();
-    self::$stmt->execute();
-    self::$dbh->commit();
+	$params = ['table' => static::$table];
+	DB::_insert($params,$item);
   }
   
   public static function update($id,$item) {
-	if (empty(self::$db_config)) {
-	  self::init();
-    }
-    $values = [];
-    foreach($item as $key => $value) {
-      $values[] = $key . " = '" . $value . "'";
-    }
-    self::$dbh->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-	self::$stmt = self::$dbh->prepare("UPDATE ".static::$table." SET ".
-	         join(", ",$values)." WHERE ".static::$primaryKey." = :id");
-	self::$stmt->bindParam(':id', $id);
-	self::$dbh->beginTransaction();
-    self::$stmt->execute();
-    self::$dbh->commit();
+    $params = ['table' => static::$table,'where'=>['id'=>$id]];
+	DB::_update($params,$item);
   }
   
-
   public static function destroy($id) {
-	if (empty(self::$db_config)) {
-	  self::init();
-    }
-    self::$dbh->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
-	self::$stmt = self::$dbh->prepare("DELETE FROM ".static::$table.
-	                            " WHERE ".static::$primaryKey." = :id");
-	self::$stmt->bindParam(':id', $id);
-    self::$dbh->beginTransaction();
-    self::$stmt->execute();
-    self::$dbh->commit();
+    $params = ['table' => static::$table,'where'=>['id'=>$id]];
+	DB::_delete($params);
+  }
+
+  public function save() {
+	$item = [];
+	foreach (static::$columns as $k => $v)
+      $item[$v] = $this->{$v};
+    if ($id==null)
+      DB::_insert($params,$item);
+    else
+      DB::_update($params,$item);
   }
 }
+
 ?>
 <?php
 /**
