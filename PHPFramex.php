@@ -64,10 +64,29 @@ class Route {
     self::$halts = $flag;
   }
 
+  public static function dispatch() {
+	$cookies = $GLOBALS['cookies'];
+	
+	if (isset($cookies))
+	  foreach ($cookies as $key => $value)
+	    setcookie($key,$value);
+	
+	$sessions = $GLOBALS['sessions'];
+	if (isset($sessions))
+	  foreach ($sessions as $key => $value)
+	    $_SESSION[$key] = $value;
+	
+	session_start();
+	
+	$content = self::_dispatch();
+	
+	echo $content;
+  }
+  
   /**
    * Runs the callback for the given request
    */
-  public static function dispatch(){
+  public static function _dispatch(){
     $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
     $method = $_SERVER['REQUEST_METHOD'];
 
@@ -105,12 +124,12 @@ class Route {
             $controller = new $segments[0]();
 
             // Call method
-            $controller->{$segments[1]}();
+            return $controller->{$segments[1]}();
 
             if (self::$halts) return;
           } else {
             // Call closure
-            call_user_func(self::$callbacks[$route]);
+            return call_user_func(self::$callbacks[$route]);
 
             if (self::$halts) return;
           }
@@ -151,12 +170,12 @@ class Route {
               if (!method_exists($controller, $segments[1])) {
                 echo "controller and action not found";
               } else {
-                call_user_func_array(array($controller, $segments[1]), $matched);
+                return call_user_func_array(array($controller, $segments[1]), $matched);
               }
 
               if (self::$halts) return;
             } else {
-              call_user_func_array(self::$callbacks[$pos], $matched);
+              return call_user_func_array(self::$callbacks[$pos], $matched);
 
               if (self::$halts) return;
             }
@@ -259,11 +278,7 @@ class Template {
                     $content = $this->parseSingle($key, (string) $value, $content);
                 }
             }
-            try {
-                eval('?> ' . $content . '<?php ' );
-            } catch (Throwable $t) {
-                $content = null;
-            }
+            return $content;
         } else {
             exit( '<h1>Template error</h1>' );
         }
@@ -362,7 +377,7 @@ function view($filename,$variables=[]) {
     foreach ($variables as $key => $value) {
       $template->assign($key,$value);
     }
-    $template->parse('views/'.$filename.'.php');
+    return $template->parse('views/'.$filename.'.php');
 }
 ?>
 <?php
@@ -495,6 +510,12 @@ class DB {
     return implode(',', $result);
   }
   
+  private static function questions($fields) {
+	$result = str_repeat("?,",sizeof($fields));
+	$result = rtrim($result,',');
+    return $result;
+  }
+  
   private static function conditions($conditions,$sep) {
     $result = [];
     foreach ($conditions as $k => $v)
@@ -569,8 +590,8 @@ class DB {
    
   public static function _insert($params,$item) {
     $query = "INSERT INTO ".$params['table'];
-    $query .= " ( ".self::fields(array_keys($item))." ) ";
-    $query .= " VALUES ( ".self::fields(array_values($item))." ) ";
+    $query .= " ( ".self::fields($item)." ) ";
+    $query .= " VALUES ( ".self::questions(array_keys($item))." ) ";
     $values = array_values($item);
     self::execute($query,$values);
   }
@@ -677,6 +698,64 @@ class Input {
 
   public static function get($name) {
 	return htmlspecialchars($_REQUEST[$name]);
+  }
+}
+?>
+<?php
+/**
+ * Cookie Facade
+ * @author  Armando Arce <armando.arce@gmail.com>
+ */
+
+class Cookie {
+  
+  public static function get($key,$default=null) {
+	return $_COOKIE[$key];
+  }
+  
+  public static function has($key) {
+	return isset($_COOKIE[$key]);
+  }
+  
+  public static function queue($key,$value) {
+	$cookies = $GLOBALS['cookies'];
+	if (!isset($cookies))
+	  $cookies = [];
+	$cookies[] = [$key=>$value];
+	$GLOBALS['cookies'] = $cookies; 
+  }
+  
+  public static function forget($key) {
+    setcookie($key,"",time() - 3600);
+  }
+}
+?>
+<?php
+/**
+ * Session Facade
+ * @author  Armando Arce <armando.arce@gmail.com>
+ */
+
+class Session {
+
+  public static function put($key,$value) {
+    $sessions = $GLOBALS['sessions'];
+	if (!isset($sessions))
+	  $sessions = [];
+	$sessions[] = [$key=>$value];
+	$GLOBALS['sessions'] = $sessions; 
+  }
+  
+  public static function get($key,$default=null) {
+	return $_SESSION[$key];
+  }
+  
+  public static function forget($key) {
+	unset ($_SESSION[$key]);
+  }
+  
+  public static function has($key) {
+	return isset($_SESSION[$key]);
   }
 }
 ?>
