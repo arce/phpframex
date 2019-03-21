@@ -65,18 +65,15 @@ class Route {
   }
 
   public static function dispatch() {
-	$cookies = $GLOBALS['cookies'];
+	session_start();
 	
-	if (isset($cookies))
-	  foreach ($cookies as $key => $value)
+	if (isset($GLOBALS['cookies']))
+	  foreach ($GLOBALS['cookies'] as $key => $value)
 	    setcookie($key,$value);
 	
-	$sessions = $GLOBALS['sessions'];
-	if (isset($sessions))
-	  foreach ($sessions as $key => $value)
+	if (isset($GLOBALS['sessions']))
+	  foreach ($GLOBALS['sessions'] as $key => $value)
 	    $_SESSION[$key] = $value;
-	
-	session_start();
 	
 	$content = self::_dispatch();
 	
@@ -726,7 +723,6 @@ class Cookie {
   }
   
   public static function forget($key) {
-    setcookie($key,"",time() - 3600);
   }
 }
 ?>
@@ -746,7 +742,10 @@ class Session {
 	$GLOBALS['sessions'] = $sessions; 
   }
   
-  public static function get($key,$default=null) {
+  public static function push($key,$value) {
+  }
+  
+  public static function get($key) {
 	return $_SESSION[$key];
   }
   
@@ -754,8 +753,54 @@ class Session {
 	unset ($_SESSION[$key]);
   }
   
+  public static function pull($key) {
+  }
+  
   public static function has($key) {
 	return isset($_SESSION[$key]);
   }
+  
+  public static function exists($key) {
+	return isset($_SESSION[$key]);
+  }
 }
+?>
+<?php
+/**
+ * Auth Facade
+ * @author  Armando Arce <armando.arce@gmail.com>
+*/
+ 
+class Auth {
+  public static function user() {
+  }
+  
+  public static function id() {
+  }
+  
+  public static function check() {
+  }
+  
+  public static function attempt($credentials) {
+  }
+  
+  public static function login($user,$remember) {
+  }
+  
+  public static function loginUsingId($id) {
+  }
+  
+  public static function logout() {
+  }
+  
+  public static function viaRemember() {
+  }
+  
+  public static function once($credentials) {
+  }
+  
+  public static function onceBasic() {
+  }
+}
+
 ?>
