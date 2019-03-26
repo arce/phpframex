@@ -65,8 +65,7 @@ class Route {
   }
 
   public static function dispatch() {
-	session_start();
-	
+
 	if (isset($GLOBALS['cookies']))
 	  foreach ($GLOBALS['cookies'] as $key => $value)
 	    setcookie($key,$value);
@@ -262,7 +261,7 @@ class Template {
               $end = strpos($content,'}}',$start);
               if ($end === false) break;
               $partial_file = substr($content,$start+4,$end-$start-4);
-              $partial = file_get_contents('views/'.$partial_file.'.php');
+              $partial = file_get_contents('views/'.$partial_file.'.html');
               $partial_tag = substr($content,$start,$end-$start+2);
               $content = str_replace($partial_tag,$partial,$content);
 		    }
@@ -374,7 +373,7 @@ function view($filename,$variables=[]) {
     foreach ($variables as $key => $value) {
       $template->assign($key,$value);
     }
-    return $template->parse('views/'.$filename.'.php');
+    return $template->parse('views/'.$filename.'.html');
 }
 ?>
 <?php
@@ -735,18 +734,15 @@ class Cookie {
 class Session {
 
   public static function put($key,$value) {
-    $sessions = $GLOBALS['sessions'];
-	if (!isset($sessions))
-	  $sessions = [];
 	$sessions[] = [$key=>$value];
-	$GLOBALS['sessions'] = $sessions; 
-  }
-  
-  public static function push($key,$value) {
+	$GLOBALS['sessions'] = $sessions;
   }
   
   public static function get($key) {
-	return $_SESSION[$key];
+	if (isset($_SESSION[$key])) {
+	  echo "TRUE";
+	  return $_SESSION[$key];
+	} else return null;
   }
   
   public static function forget($key) {
@@ -766,22 +762,34 @@ class Session {
 }
 ?>
 <?php
+
 /**
  * Auth Facade
  * @author  Armando Arce <armando.arce@gmail.com>
 */
  
 class Auth {
+  
   public static function user() {
   }
   
   public static function id() {
+	return Session::get('user');
   }
   
   public static function check() {
+	return (Session::get('user')!=null);
   }
   
-  public static function attempt($credentials) {
+  public static function attempt($item) {
+	$user = DB::table('users')->where('email',$item['email'])->get();
+	if (isset($user)) {
+	  if (trim($item['password']) == trim($user[0]['password'])) {
+	    Session::put('user',$item['email']);
+	    return true;
+	  }
+	}
+	return false;
   }
   
   public static function login($user,$remember) {
@@ -791,6 +799,7 @@ class Auth {
   }
   
   public static function logout() {
+	Session::forget('user');
   }
   
   public static function viaRemember() {
