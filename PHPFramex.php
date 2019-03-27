@@ -65,18 +65,31 @@ class Route {
   }
 
   public static function dispatch() {
+	global $sessions;
+	global $cookies;
+	global $redirect;
 
-	if (isset($GLOBALS['cookies']))
-	  foreach ($GLOBALS['cookies'] as $key => $value)
-	    setcookie($key,$value);
-	
-	if (isset($GLOBALS['sessions']))
-	  foreach ($GLOBALS['sessions'] as $key => $value)
+    $content = self::_dispatch();
+    
+	foreach ($sessions as $key => $value) {
+	  if ($value==null && isset($_SESSION[$key]))
+	    unset($_SESSION[$key]);
+	  else
 	    $_SESSION[$key] = $value;
+	}
+	  
+	foreach ($cookies as $key => $value) {
+	  if ($value==null)
+	    setcookie($key,"",time() - 3600);
+	  else
+	    setcookie($key,$value);
+	}
 	
-	$content = self::_dispatch();
-	
-	echo $content;
+	if ($content!=null)
+	  echo $content;
+
+	if ($redirect!=null)
+	  header('Location: ' . $redirect, true, 303);
   }
   
   /**
@@ -202,8 +215,8 @@ class Route {
 }
 
 function redirect($url, $statusCode = 303) {
-  header('Location: ' . $url, true, $statusCode);
-  die();
+  global $redirect;
+  $redirect = $url;
 }
 ?>
 <?php
@@ -714,14 +727,13 @@ class Cookie {
   }
   
   public static function queue($key,$value) {
-	$cookies = $GLOBALS['cookies'];
-	if (!isset($cookies))
-	  $cookies = [];
-	$cookies[] = [$key=>$value];
-	$GLOBALS['cookies'] = $cookies; 
+	global $cookies;
+	$cookies[$key] = $value;
   }
   
   public static function forget($key) {
+	global $cookies;
+	$cookies[$key] = null;
   }
 }
 ?>
@@ -734,19 +746,19 @@ class Cookie {
 class Session {
 
   public static function put($key,$value) {
-	$sessions[] = [$key=>$value];
-	$GLOBALS['sessions'] = $sessions;
+	global $sessions;
+	$sessions[$key] = $value;
   }
   
   public static function get($key) {
 	if (isset($_SESSION[$key])) {
-	  echo "TRUE";
 	  return $_SESSION[$key];
 	} else return null;
   }
   
   public static function forget($key) {
-	unset ($_SESSION[$key]);
+	global $sessions;
+	$sessions[$key] = null;
   }
   
   public static function pull($key) {
