@@ -145,6 +145,12 @@ class Route {
     $replaces = array_values(static::$patterns);
 
     $found_route = false;
+    parse_str(file_get_contents("php://input"), $_REQUEST);
+
+    if ($type=='application/json')
+       $_REQUEST = json_decode(file_get_contents('php://input'), True);
+    else if ($type=='application/xml')
+       $_REQUEST = simplexml_load_string(file_get_contents('php://input'));
 
     self::$routes = preg_replace('/\/+/', '/', self::$routes);
 
@@ -178,8 +184,9 @@ class Route {
             // Instanitate controller
             $controller = new $segments[0]();
 
+            print_r($_REQUEST);
             // Call method
-            return $controller->{$segments[1]}();
+            return $controller->{$segments[1]}($_REQUEST);
 
             if (self::$halts) return;
           } else {
@@ -205,20 +212,12 @@ class Route {
              in_array($method, self::$maps[$pos]))) {
 		
             $found_route = true;
-            parse_str(file_get_contents("php://input"), $_REQUEST);
-            
-            $data = [];
-
-            if ($type=='application/json') {
-               $data = json_decode(file_get_contents('php://input'), True);
-            } else if ($type=='application/xml') {
-               $data = simplexml_load_string(file_get_contents('php://input'));
-            }
             
             // Remove $matched[0] as [1] is the first parameter.
             array_shift($matched);
-            if ($data!=[])
-              $matched = array_merge(array($data),$matched);
+            
+            if ($_REQUEST!=[])
+              $matched = array_merge(array($_REQUEST),$matched);
 
             if (!is_object(self::$callbacks[$pos])) {
 
