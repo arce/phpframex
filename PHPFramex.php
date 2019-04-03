@@ -139,8 +139,8 @@ class Route {
 	
     $uri = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
     $method = $_SERVER['REQUEST_METHOD'];
-    $type = $_SERVER['CONTENT_TYPE'];
-    $accept = explode(",",$_SERVER['HTTP_ACCEPT']);
+    $type = isset($_SERVER['CONTENT_TYPE'])? $_SERVER['CONTENT_TYPE']:'text/html';
+    $accept = isset($_SERVER['HTTP_ACCEPT'])? explode(",",$_SERVER['HTTP_ACCEPT']):'text/html';
     $searches = array_keys(static::$patterns);
     $replaces = array_values(static::$patterns);
 
@@ -184,7 +184,6 @@ class Route {
             // Instanitate controller
             $controller = new $segments[0]();
 
-            print_r($_REQUEST);
             // Call method
             return $controller->{$segments[1]}($_REQUEST);
 
