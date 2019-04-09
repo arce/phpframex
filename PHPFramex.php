@@ -748,6 +748,11 @@ class Model {
 	return DB::_select($params);
   }
   
+  public static function where($key,$value) {
+	$params = ['table'=>static::$table,'where'=>[$key=>$value]];
+	return DB::_select($params);
+  }
+  
   public static function create($item) {
 	$params = ['table' => static::$table];
 	DB::_insert($params,$item);
@@ -785,10 +790,10 @@ abstract class Controller {
   
   public function index() {}
   public function create() {}
-  public function store($request) {}
+  public function store($param1=NULL) {}
   public function show($id) {}
   public function edit($id) {}
-  public function update($param1,$param2) {}
+  public function update($param1,$param2=NULL) {}
   public function destroy($id) {}
 }
 ?>
@@ -803,7 +808,20 @@ class Input {
   public static function get($name) {
 	return htmlspecialchars($_REQUEST[$name]);
   }
+  
+  public static function file($name) {
+	return $_FILES[$name];
+  }
+  
+  public static function hasFile($name) {
+	return file_exists($name);
+  }
+  
+  public static function move($name,$path) {
+	move_uploaded_file($_FILES[$name]["tmp_name"],$path);
+  }
 }
+
 ?>
 <?php
 /**
