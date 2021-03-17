@@ -63,10 +63,10 @@ class Route {
     self::get($uri, $controller.'@index',$format);
     self::get($uri.'/create', $controller.'@create',$format);
     self::post($uri, $controller.'@store',$format);
-    self::get($uri.'/(:string)', $controller.'@show',$format);
-    self::get($uri.'/(:string)/edit',$controller.'@edit',$format);
-    self::put($uri.'/(:string)',$controller.'@update',$format);
-    self::delete($uri.'/(:string)',$controller.'@destroy',$format);
+    self::get($uri.'/(:number)', $controller.'@show',$format);
+    self::get($uri.'/(:number)/edit',$controller.'@edit',$format);
+    self::put($uri.'/(:number)',$controller.'@update',$format);
+    self::delete($uri.'/(:number)',$controller.'@destroy',$format);
   }
 
   /**
@@ -399,7 +399,7 @@ class Template {
      */
     private function parseSingle( $key, $value, $string, $index = null ) {
         if ( isset( $index ) ) {
-            $string = str_replace( $this->l_delim . '.' . $this->r_delim, $index, $string );
+            $string = str_replace( $this->l_delim . '.' . $this->r_delim, $index+1, $string );
         }
         return str_replace( $this->l_delim . $key . $this->r_delim, strip_tags($value), $string );
     }
@@ -748,8 +748,8 @@ class Model {
 	return DB::_select($params);
   }
   
-  public static function where($key,$value) {
-	$params = ['table'=>static::$table,'where'=>[$key=>$value]];
+  public static function where($field,$value) {
+	$params = ['table'=>static::$table,'where'=>[$field=>$value]];
 	return DB::_select($params);
   }
   
@@ -810,20 +810,20 @@ class Input {
   }
   
   public static function file($name) {
-	return $_FILES[$name];
-  }
-  
-  public static function hasFile($name) {
-	return file_exists($name);
-  }
-  
-  public static function move($name,$path) {
-	move_uploaded_file($_FILES[$name]["tmp_name"],$path);
+	if (isset($_FILES[$name])) {
+	  if ($_FILES[$name]["error"] > 0) {
+		 return false;
+	  } else {
+	     $storagename = $name . ".dat";
+	     move_uploaded_file($_FILES[$name]["tmp_name"], "upload/" . $storagename);
+	     return "upload/" . $storagename;
+	   }
+	 } else {
+	   return false;
+	 }
   }
 }
-
-?>
-<?php
+?><?php
 /**
  * Cookie Facade
  * @author  Armando Arce <armando.arce@gmail.com>
@@ -896,21 +896,23 @@ class Session {
 class Auth {
   
   public static function user() {
+    return Session::get('user');
   }
   
   public static function id() {
-	return Session::get('user');
+	return Session::get('id');
   }
   
   public static function check() {
-	return (Session::get('user')!=null);
+	return (Session::get('id')!=null);
   }
   
   public static function attempt($item) {
 	$user = DB::table('users')->where('email',$item['email'])->get();
 	if (isset($user)) {
 	  if (trim($item['password']) == trim($user[0]['password'])) {
-	    Session::put('user',$item['email']);
+	    Session::put('user',$user[0]);
+		Session::put('id',$user[0]['id']);
 	    return true;
 	  }
 	}
@@ -925,6 +927,7 @@ class Auth {
   
   public static function logout() {
 	Session::forget('user');
+	Session::forget('id');
   }
   
   public static function viaRemember() {
@@ -936,5 +939,3 @@ class Auth {
   public static function onceBasic() {
   }
 }
-
-?>
