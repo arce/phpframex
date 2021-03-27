@@ -51,3 +51,4 @@ class Auth {
   public static function onceBasic() {
   }
 }
+?>

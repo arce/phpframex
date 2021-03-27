@@ -85,7 +85,7 @@ class Template {
         if ( isset( $index ) ) {
             $string = str_replace( $this->l_delim . '.' . $this->r_delim, $index+1, $string );
         }
-        return str_replace( $this->l_delim . $key . $this->r_delim, strip_tags($value), $string );
+        return str_replace( $this->l_delim . $key . $this->r_delim, $value, $string );
     }
 
     /**
@@ -165,6 +165,14 @@ function view($filename,$variables=[]) {
     foreach ($variables as $key => $value) {
       $template->assign($key,$value);
     }
-    return $template->parse('views/'.$filename.'.html');
+	if (file_exists('views/'.$filename.'.html'))
+      return $template->parse('views/'.$filename.'.html');
+	if (file_exists('views/'.$filename.'.php')) {
+	  extract($variables);
+	  ob_start();
+	  include('views/'.$filename.'.php');
+	  return ob_get_clean();
+    }
+	return 'Template error';
 }
 ?>
