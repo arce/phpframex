@@ -6,7 +6,7 @@
 
 class Cookie {
   
-  public static function get($key,$default=null) {
+  public static function get($key,$default = null) {
 	return $_COOKIE[$key];
   }
   

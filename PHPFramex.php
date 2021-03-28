@@ -152,6 +152,9 @@ class Route {
     else if ($type=='application/xml')
        $_REQUEST = simplexml_load_string(file_get_contents('php://input'));
 
+	if (isset($_REQUEST['_method'])
+	  $method =  $_REQUEST['_method'];
+	
     self::$routes = preg_replace('/\/+/', '/', self::$routes);
 
     // Check if route is defined without regex
@@ -309,10 +312,6 @@ function to_html($array) {
     return $html;
 }
 
-function redirect($url, $statusCode = 303) {
-  global $redirect;
-  $redirect = $url;
-}
 ?>
 <?php
 
@@ -502,12 +501,12 @@ class Query {
 
   public $params = [];
   
-  public function where($field,$value,$extra=null) {
+  public function where($field,$value,$extra = null) {
 	$this->params['where'] = [$field=>$value];
 	return $this;
   }
   
-  public function orWhere($field,$value,$extra=null) {
+  public function orWhere($field,$value,$extra = null) {
 	$this->params['where'] = [$field=>$value];
 	return $this;
   }
@@ -798,10 +797,10 @@ abstract class Controller {
   
   public function index() {}
   public function create() {}
-  public function store($param1=NULL) {}
+  public function store($param1 = null) {}
   public function show($id) {}
   public function edit($id) {}
-  public function update($param1,$param2=NULL) {}
+  public function update($param1,$param2 = null) {}
   public function destroy($id) {}
 }
 ?>
@@ -839,7 +838,7 @@ class Input {
 
 class Cookie {
   
-  public static function get($key,$default=null) {
+  public static function get($key,$default = null) {
 	return $_COOKIE[$key];
   }
   
@@ -1042,3 +1041,24 @@ class Markdown {
 		return trim ($text);
 	}
 }
+
+?><?php
+/**
+ * Redirect Facade
+ * @author  Armando Arce <armando.arce@gmail.com>
+ */
+
+class Redirect {
+
+	static function to($to = null, $status = 302, $headers = [], $secure = null) {
+	    global $redirect;
+	    $redirect = $url;		
+	}
+}
+
+function redirect($to = null, $status = 302, $headers = [], $secure = null) {
+  global $redirect;
+  $redirect = $url;
+}
+
+?>

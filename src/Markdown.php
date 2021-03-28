@@ -93,3 +93,5 @@ class Markdown {
 		return trim ($text);
 	}
 }
+
+?>
