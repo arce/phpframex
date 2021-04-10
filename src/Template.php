@@ -157,7 +157,7 @@ class Template {
         return $match;
     }
 }
-        
+
 function view($filename,$variables=[]) {
     if (!isset($template)) {
       $template = new Template();

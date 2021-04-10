@@ -152,7 +152,7 @@ class Route {
     else if ($type=='application/xml')
        $_REQUEST = simplexml_load_string(file_get_contents('php://input'));
 
-	if (isset($_REQUEST['_method'])
+	if (isset($_REQUEST['_method']))
 	  $method =  $_REQUEST['_method'];
 	
     self::$routes = preg_replace('/\/+/', '/', self::$routes);
@@ -472,7 +472,7 @@ class Template {
         return $match;
     }
 }
-        
+
 function view($filename,$variables=[]) {
     if (!isset($template)) {
       $template = new Template();
@@ -1061,4 +1061,23 @@ function redirect($to = null, $status = 302, $headers = [], $secure = null) {
   $redirect = $url;
 }
 
+?>
+<?php
+/**
+ * View Facade
+ * @author  Armando Arce <armando.arce@gmail.com>
+ */
+
+class View{
+
+  public static function make($filename,$variables=[]) {
+     view($filename,$variables);
+  }
+  
+  public static function exists($filename) {
+     return (file_exists('views/'.$filename.'.html') || 
+		     file_exists('views/'.$filename.'.php'));
+  }
+
+}
 ?>
