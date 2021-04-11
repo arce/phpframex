@@ -153,7 +153,7 @@ class Route {
        $_REQUEST = simplexml_load_string(file_get_contents('php://input'));
 
 	if (isset($_REQUEST['_method']))
-	  $method =  $_REQUEST['_method'];
+	  $method = $_REQUEST['_method'];
 	
     self::$routes = preg_replace('/\/+/', '/', self::$routes);
 
