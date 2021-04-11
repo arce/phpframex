@@ -312,4 +312,9 @@ function to_html($array) {
     return $html;
 }
 
+function redirect($to = null, $status = 302, $headers = [], $secure = null) {
+  global $redirect;
+  $redirect = $to;
+}
+
 ?>
