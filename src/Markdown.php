@@ -21,30 +21,32 @@
  */
 class Markdown {
 	public static $rules = array (
-	    '/\r\n/' =>  "\n" ,  
-		'/(#+)(.*)/' => 'self::header',                           // headers
-		'/!\[([^\[]+)\]\(([^\)]+)\)/' => '<img src=\'\2\' alt=\'\1\'>',  // images
-		'/\[([^\[]+)\]\(([^\)]+)\)/' => '<a href=\'\2\'>\1</a>',  // links
-		'/\¿([^\¿]+)\?\(([^\)]+)\)/' => '<label for="\2"><input type="radio" id="\2" name="\1" value="\2"/> \2</label>',  // radio
-		'/(\*\*|__)(.*?)\1/' => '<strong>\2</strong>',            // bold
-		'/(\*|_)(.*?)\1/' => '<em>\2</em>',                       // emphasis
-		'/\~\~(.*?)\~\~/' => '<del>\1</del>',                     // del
-		'/\:\"(.*?)\"\:/' => '<q>\1</q>',                         // quote
-		'/`((.|\n)*?)`/' => '<code style="white-space: pre">\1</code>',                         // inline code
-		'/\n\*(.*)/' => 'self::ul_list',                          // ul lists
-		'/\n[0-9]+\.(.*)/' => 'self::ol_list',                    // ol lists
-		'/\n(&gt;|\>)(.*)/' => 'self::blockquote',               // blockquotes
-		'/\n-{5,}/' => "\n<hr />",                                // horizontal rule
-		'/([^\n]+)\n/' => 'self::para',                         // add paragraphs
-		'/<\/ul>\s?<ul>/' => '',                                  // fix extra ul
-		'/<\/ol>\s?<ol>/' => '',                                  // fix extra ol
-		'/<\/blockquote><blockquote>/' => "\n"                    // fix extra blockquote
-	);
-
+		    '/\r\n/' =>  "\n" ,
+			'/(#+)(.*)/' => 'self::header',                           // headers
+			'/!\[([^\[]+)\]\(([^\)]+)\)/' => '<img src=\'\2\' alt=\'\1\'>',  // images
+			'/\[([^\[]+)\]\(([^\)]+)\)/' => '<a href=\'\2\'>\1</a>',  // links
+			'/\¿([^\¿]+)\?\(([^\)]+)\)/' => '<label for="\2"><input type="radio" id="\2" name="\1" value="\2"/> \2</label>',  // radio
+			'/(\*\*|__)(.*?)\1/' => '<strong>\2</strong>',            // bold
+			'/(\*|_)(.*?)\1/' => '<em>\2</em>',                       // emphasis
+			'/\~\~(.*?)\~\~/' => '<del>\1</del>',                     // del
+			'/\:\"(.*?)\"\:/' => '<q>\1</q>',                         // quote
+			'/\n\*(.*)/' => 'self::ul_list',                          // ul lists
+			'/\n[0-9]+\.(.*)/' => 'self::ol_list',                    // ol lists
+			'/\n(&gt;|\>)(.*)/' => 'self::blockquote',               // blockquotes
+			'/\n-{5,}/' => "\n<hr />",                                // horizontal rule
+			'/([^\n]+)\n/' => 'self::para',                         // add paragraphs
+			'/<\/ul>\s?<ul>/' => '',                                  // fix extra ul
+			'/<\/ol>\s?<ol>/' => '',                                  // fix extra ol
+			'/`((.|\n)*?)`/' => '<code style="white-space:pre-wrap;">\1</code>',     // inline code
+			'/<\/blockquote><blockquote>/' => "\n",                    // fix extra blockquote
+			'/<\/p><p>/' => "\n"                    // fix extra code
+		);
+	
 	private static function para ($regs) {
 		$line = $regs[1];
-		$trimmed = trim ($line);
-		if (preg_match ('/^<\/?(ul|ol|li|h|p|bl)/', $trimmed)) {
+		//$trimmed = trim ($line);
+		$trimmed = $line;
+		if (preg_match ('/^<\/?(ul|ol|li|h|p|bl|code)/', $trimmed)) {
 			return "\n" . $line . "\n";
 		}
 		return sprintf ("<p>%s</p>", $trimmed);

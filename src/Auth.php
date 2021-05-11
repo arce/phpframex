@@ -16,7 +16,7 @@ class Auth {
   }
   
   public static function check() {
-	return (Session::get('id')!=null);
+	return (Session::get('id')!=NULL);
   }
   
   public static function attempt($item) {

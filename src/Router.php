@@ -152,8 +152,10 @@ class Route {
     else if ($type=='application/xml')
        $_REQUEST = simplexml_load_string(file_get_contents('php://input'));
 
-	if (isset($_REQUEST['_method']))
+	if (isset($_REQUEST['_method'])) {
 	  $method = $_REQUEST['_method'];
+	  unset($_REQUEST['_method']);
+    }
 	
     self::$routes = preg_replace('/\/+/', '/', self::$routes);
 
@@ -266,7 +268,7 @@ class Route {
       } else {
         if (is_string(self::$error_callback)) {
           self::get($_SERVER['REQUEST_URI'], self::$error_callback);
-          self::$error_callback = null;
+          self::$error_callback = NULL;
           self::dispatch();
           return ;
         }
@@ -312,7 +314,7 @@ function to_html($array) {
     return $html;
 }
 
-function redirect($to = null, $status = 302, $headers = [], $secure = null) {
+function redirect($to = NULL, $status = 302, $headers = [], $secure = NULL) {
   global $redirect;
   $redirect = $to;
 }

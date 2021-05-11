@@ -8,12 +8,12 @@ class Query {
 
   public $params = [];
   
-  public function where($field,$value,$extra = null) {
+  public function where($field,$value,$extra = NULL) {
 	$this->params['where'] = [$field=>$value];
 	return $this;
   }
   
-  public function orWhere($field,$value,$extra = null) {
+  public function orWhere($field,$value,$extra = NULL) {
 	$this->params['where'] = [$field=>$value];
 	return $this;
   }

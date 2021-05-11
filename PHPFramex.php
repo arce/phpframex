@@ -152,8 +152,10 @@ class Route {
     else if ($type=='application/xml')
        $_REQUEST = simplexml_load_string(file_get_contents('php://input'));
 
-	if (isset($_REQUEST['_method']))
+	if (isset($_REQUEST['_method'])) {
 	  $method = $_REQUEST['_method'];
+	  unset($_REQUEST['_method']);
+    }
 	
     self::$routes = preg_replace('/\/+/', '/', self::$routes);
 
@@ -266,7 +268,7 @@ class Route {
       } else {
         if (is_string(self::$error_callback)) {
           self::get($_SERVER['REQUEST_URI'], self::$error_callback);
-          self::$error_callback = null;
+          self::$error_callback = NULL;
           self::dispatch();
           return ;
         }
@@ -312,7 +314,7 @@ function to_html($array) {
     return $html;
 }
 
-function redirect($to = null, $status = 302, $headers = [], $secure = null) {
+function redirect($to = NULL, $status = 302, $headers = [], $secure = NULL) {
   global $redirect;
   $redirect = $to;
 }
@@ -506,12 +508,12 @@ class Query {
 
   public $params = [];
   
-  public function where($field,$value,$extra = null) {
+  public function where($field,$value,$extra = NULL) {
 	$this->params['where'] = [$field=>$value];
 	return $this;
   }
   
-  public function orWhere($field,$value,$extra = null) {
+  public function orWhere($field,$value,$extra = NULL) {
 	$this->params['where'] = [$field=>$value];
 	return $this;
   }
@@ -784,7 +786,7 @@ class Model {
 	$item = [];
 	foreach (static::$columns as $k => $v)
       $item[$v] = $this->{$v};
-    if ($id==null)
+    if ($id==NULL)
       DB::_insert($params,$item);
     else
       DB::_update($params,$item);
@@ -802,10 +804,10 @@ abstract class Controller {
   
   public function index() {}
   public function create() {}
-  public function store($param1 = null) {}
+  public function store($param1 = NULL) {}
   public function show($id) {}
   public function edit($id) {}
-  public function update($param1,$param2 = null) {}
+  public function update($param1,$param2 = NULL) {}
   public function destroy($id) {}
 }
 ?>
@@ -843,7 +845,7 @@ class Input {
 
 class Cookie {
   
-  public static function get($key,$default = null) {
+  public static function get($key,$default = NULL) {
 	return $_COOKIE[$key];
   }
   
@@ -858,7 +860,7 @@ class Cookie {
   
   public static function forget($key) {
 	global $cookies;
-	$cookies[$key] = null;
+	$cookies[$key] = NULL;
   }
 }
 ?>
@@ -878,12 +880,12 @@ class Session {
   public static function get($key) {
 	if (isset($_SESSION[$key])) {
 	  return $_SESSION[$key];
-	} else return null;
+	} else return NULL;
   }
   
   public static function forget($key) {
 	global $sessions;
-	$sessions[$key] = null;
+	$sessions[$key] = NULL;
   }
   
   public static function pull($key) {
@@ -916,7 +918,7 @@ class Auth {
   }
   
   public static function check() {
-	return (Session::get('id')!=null);
+	return (Session::get('id')!=NULL);
   }
   
   public static function attempt($item) {
@@ -974,30 +976,32 @@ class Auth {
  */
 class Markdown {
 	public static $rules = array (
-	    '/\r\n/' =>  "\n" ,  
-		'/(#+)(.*)/' => 'self::header',                           // headers
-		'/!\[([^\[]+)\]\(([^\)]+)\)/' => '<img src=\'\2\' alt=\'\1\'>',  // images
-		'/\[([^\[]+)\]\(([^\)]+)\)/' => '<a href=\'\2\'>\1</a>',  // links
-		'/\¿([^\¿]+)\?\(([^\)]+)\)/' => '<label for="\2"><input type="radio" id="\2" name="\1" value="\2"/> \2</label>',  // radio
-		'/(\*\*|__)(.*?)\1/' => '<strong>\2</strong>',            // bold
-		'/(\*|_)(.*?)\1/' => '<em>\2</em>',                       // emphasis
-		'/\~\~(.*?)\~\~/' => '<del>\1</del>',                     // del
-		'/\:\"(.*?)\"\:/' => '<q>\1</q>',                         // quote
-		'/`((.|\n)*?)`/' => '<code style="white-space: pre">\1</code>',                         // inline code
-		'/\n\*(.*)/' => 'self::ul_list',                          // ul lists
-		'/\n[0-9]+\.(.*)/' => 'self::ol_list',                    // ol lists
-		'/\n(&gt;|\>)(.*)/' => 'self::blockquote',               // blockquotes
-		'/\n-{5,}/' => "\n<hr />",                                // horizontal rule
-		'/([^\n]+)\n/' => 'self::para',                         // add paragraphs
-		'/<\/ul>\s?<ul>/' => '',                                  // fix extra ul
-		'/<\/ol>\s?<ol>/' => '',                                  // fix extra ol
-		'/<\/blockquote><blockquote>/' => "\n"                    // fix extra blockquote
-	);
-
+		    '/\r\n/' =>  "\n" ,
+			'/(#+)(.*)/' => 'self::header',                           // headers
+			'/!\[([^\[]+)\]\(([^\)]+)\)/' => '<img src=\'\2\' alt=\'\1\'>',  // images
+			'/\[([^\[]+)\]\(([^\)]+)\)/' => '<a href=\'\2\'>\1</a>',  // links
+			'/\¿([^\¿]+)\?\(([^\)]+)\)/' => '<label for="\2"><input type="radio" id="\2" name="\1" value="\2"/> \2</label>',  // radio
+			'/(\*\*|__)(.*?)\1/' => '<strong>\2</strong>',            // bold
+			'/(\*|_)(.*?)\1/' => '<em>\2</em>',                       // emphasis
+			'/\~\~(.*?)\~\~/' => '<del>\1</del>',                     // del
+			'/\:\"(.*?)\"\:/' => '<q>\1</q>',                         // quote
+			'/\n\*(.*)/' => 'self::ul_list',                          // ul lists
+			'/\n[0-9]+\.(.*)/' => 'self::ol_list',                    // ol lists
+			'/\n(&gt;|\>)(.*)/' => 'self::blockquote',               // blockquotes
+			'/\n-{5,}/' => "\n<hr />",                                // horizontal rule
+			'/([^\n]+)\n/' => 'self::para',                         // add paragraphs
+			'/<\/ul>\s?<ul>/' => '',                                  // fix extra ul
+			'/<\/ol>\s?<ol>/' => '',                                  // fix extra ol
+			'/`((.|\n)*?)`/' => '<code style="white-space:pre-wrap;">\1</code>',     // inline code
+			'/<\/blockquote><blockquote>/' => "\n",                    // fix extra blockquote
+			'/<\/p><p>/' => "\n"                    // fix extra code
+		);
+	
 	private static function para ($regs) {
 		$line = $regs[1];
-		$trimmed = trim ($line);
-		if (preg_match ('/^<\/?(ul|ol|li|h|p|bl)/', $trimmed)) {
+		//$trimmed = trim ($line);
+		$trimmed = $line;
+		if (preg_match ('/^<\/?(ul|ol|li|h|p|bl|code)/', $trimmed)) {
 			return "\n" . $line . "\n";
 		}
 		return sprintf ("<p>%s</p>", $trimmed);

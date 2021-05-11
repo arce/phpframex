@@ -44,7 +44,7 @@ class Model {
 	$item = [];
 	foreach (static::$columns as $k => $v)
       $item[$v] = $this->{$v};
-    if ($id==null)
+    if ($id==NULL)
       DB::_insert($params,$item);
     else
       DB::_update($params,$item);
