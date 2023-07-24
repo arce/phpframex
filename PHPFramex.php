@@ -507,31 +507,47 @@ function view($filename,$variables=[]) {
 class Query {
 
   public $params = [];
-  
-  public function where($field,$value,$extra = NULL) {
-	$this->params['where'] = [$field=>$value];
+
+  public function itemWhere($relacional,$field,$operator,$value = NULL) {
+  	if ($value == NULL) {
+  	  $value = $operator;
+  	  $operator = '=';
+    }
+  	$this->params['where'][] = [$relational,$field,$operator,$value];
+  }
+
+  public function where($field,$operator,$value = NULL) {
+	if (is_array($field))
+	  foreach ($field as $item)
+		self::itemWhere('AND',$item[0],$item[1],$item[2]);
+	else
+		self::itemWhere('AND',$field,$operator,$value);
 	return $this;
   }
-  
+
   public function orWhere($field,$value,$extra = NULL) {
-	$this->params['where'] = [$field=>$value];
-	return $this;
+  	if (is_array($field))
+  	  foreach ($field as $item)
+  		self::itemWhere('OR',$item[0],$item[1],$item[2]);
+  	else
+  		self::itemWhere('OR',$field,$operator,$value);
+  	return $this;
   }
-  
+
   public function distinct() {
 	$this->params['distinct'] = true;
 	return $this;
   }
-  
-  public function orderBy($field,$ord) {
-	if (!array_key_exists('fields',$this->params))
-	  $this->params['fields'] = [];
+
+  public function orderBy($fields,$ord) {
+	if (!array_key_exists('orderBy',$this->params))
+	  $this->params['orderBy'] = [];
 	if (is_string($fields))
 	  $fields = [$fields];
-	$this->params['fields'] = array_merge($this->params['fields'],$fields);
+	$this->params['orderBy'] = array_merge($this->params['orderBy'],$fields);
 	return $this;
   }
-  
+
   public function groupBy($fields) {
 	if (!array_key_exists('group',$this->params))
 	  $this->params['group'] = [];
@@ -540,7 +556,7 @@ class Query {
 	$this->params['group'] = array_merge($this->params['group'],$fields);
 	return $this;
   }
-  
+
   public function having($field) {
 	return $this;
   }
@@ -554,7 +570,7 @@ class Query {
 	$this->params['limit'] = $num;
 	return $this;
   }
-  
+
   public function select($fields) {
 	if (!array_key_exists('fields',$this->params))
 	  $this->params['fields'] = [];
@@ -563,32 +579,32 @@ class Query {
 	$this->params['fields'] = array_merge($this->params['fields'],$fields);
 	return $this;
   }
-  
+
   public function first() {
 	$this->params['limit'] = 1;
 	return DB::_select($this->params);
   }
-  
+
   public function find($id) {
-	$this->params['where'] = ['id'=>$id];
+	$this->params['where'][] = ['AND','id','=',$id];
 	return DB::_select($this->params);
   }
-  
+
   public function get() {
 	return DB::_select($this->params);
   }
-  
+
   public function insert($item) {
 	DB::_insert($this->params,$item);
   }
-  
+
   public function update($id,$item) {
-	$this->params['where'] = ['id'=>$id];
+	$this->params['where'][] = ['AND','id','=',$id];
 	DB::_update($this->params,$item);
   }
-  
+
   public function delete($id) {
-	$this->params['where'] = ['id'=>$id];
+	$this->params['where'][] = ['AND','id','=',$id];
 	DB::_delete($this->params);
   }
 }
@@ -599,18 +615,18 @@ class Query {
  * DB Class
  * @author  Armando Arce <armando.arce@gmail.com>
 */
- 
+
 class DB {
 
   protected static $db_config;
   protected static $dbh;
-  
+
   public function __construct() {
 	if (empty(self::$db_config)) {
 	  self::init();
     }
   }
-  
+
   private static function init() {
     if (empty(self::$db_config)) {
       self::$db_config = parse_ini_file('config.ini');
@@ -622,23 +638,24 @@ class DB {
 	  echo 'Database not found';
 	}
   }
-  
+
   private static function fields($fields) {
 	$result = array_keys($fields);
     return implode(',', $result);
   }
-  
+
   private static function questions($fields) {
 	$result = str_repeat("?,",sizeof($fields));
 	$result = rtrim($result,',');
     return $result;
   }
-  
-  private static function conditions($conditions,$sep) {
-    $result = [];
-    foreach ($conditions as $k => $v)
-      $result[] = $k."= ?";
-    return implode($sep, $result);
+
+  private static function conditions($params) {
+    $result = "";
+    foreach ($params as $item) {
+      $result .= $item[0]." ".$item[1].$item[2]."? ";
+    }
+	return substr($result,4);
   }
 
   private static function execute($query,$values) {
@@ -653,13 +670,13 @@ class DB {
     $stmt->execute();
     self::$dbh->commit();
   }
-  
+
   public static function table($tableName) {
     $qry = new Query();
 	$qry->params['table'] = $tableName;
 	return $qry;
   }
-  
+
   public static function select($query,$values) {
 	if (empty(self::$db_config)) {
 	  self::init();
@@ -676,7 +693,7 @@ class DB {
     }
     return $data;
   }
-  
+
   public static function _select($params) {
     $query = "SELECT ";
     if (array_key_exists('fields',$params))
@@ -686,8 +703,10 @@ class DB {
     $query .= " FROM ".$params['table'];
     $values = [];
     if (array_key_exists('where',$params)) {
-      $query .= " WHERE ".self::conditions($params['where'],' AND ');
-      $values = array_values($params['where']); 
+      $query .= " WHERE ".self::conditions($params['where']);
+      $values = array_map(
+	    function($item){return $item[3];},$params['where']
+	  );
     }
     if (array_key_exists('group',$params))
       $query .= " GROUP BY ".self::fields($params['group']);
@@ -701,11 +720,11 @@ class DB {
       $query .= "OFFSET ".$params['skip'];
     return self::select($query,$values);
   }
- 
+
   public static function insert($query,$values) {
 	self::execute($query,$values);
   }
-   
+
   public static function _insert($params,$item) {
     $query = "INSERT INTO ".$params['table'];
     $query .= " ( ".self::fields($item)." ) ";
@@ -713,11 +732,11 @@ class DB {
     $values = array_values($item);
     self::execute($query,$values);
   }
-  
+
   public static function update($query,$values) {
 	self::execute($query,$values);
   }
-  
+
   public static function _update($params,$item) {
     $query = "UPDATE ".$params['table']." SET ";
     $query .= self::conditions($item,',');
@@ -726,15 +745,20 @@ class DB {
     $values = array_merge($values,array_values($params['where']));
     self::execute($query,$values);
   }
-  
+
   public static function delete($query,$values) {
 	self::execute($query,$values);
   }
-  
+
   public static function _delete($params) {
     $query = "DELETE FROM ".$params['table'];
-    $query .= " WHERE ".self::conditions($params['where'],' AND ');
-    $values = array_values($params['where']);
+    $values = [];
+    if (array_key_exists('where',$params)) {
+      $query .= " WHERE ".self::conditions($params['where']);
+      $values = array_map(
+	    function($item){return $item[3];}, $params['where']
+	  );
+    }
     self::execute($query,$values);
   }
 }
@@ -753,32 +777,37 @@ class Model {
   protected static $primaryKey = 'id';
 
   public static function all() {
-	$params = ['table' => static::$table];
-	return DB::_select($params);
+    $qry = new Query();
+  	$qry->params['table'] = static::$table;
+    return $qry->get();
   }
-  
+
   public static function find($id) {
-	$params = ['table'=>static::$table,'where'=>['id'=>$id]];
-	return DB::_select($params);
+    $qry = new Query();
+    $qry->params['table'] = static::$table;
+	$qry->find($id)
+    return $qry->get();
   }
-  
+
   public static function where($field,$value) {
-	$params = ['table'=>static::$table,'where'=>[$field=>$value]];
-	return DB::_select($params);
+    $qry = new Query();
+    $qry->params['table'] = static::$table;
+  	$qry->where($field,$value)
+	return $qry;
   }
-  
+
   public static function create($item) {
 	$params = ['table' => static::$table];
 	DB::_insert($params,$item);
   }
-  
+
   public static function update($id,$item) {
-    $params = ['table' => static::$table,'where'=>['id'=>$id]];
+    $params = ['table' => static::$table,'where'=>[["AND",$field,"=",$value]]];
 	DB::_update($params,$item);
   }
-  
+
   public static function destroy($id) {
-    $params = ['table' => static::$table,'where'=>['id'=>$id]];
+    $params = ['table' => static::$table,'where'=>[["AND",$field,"=",$value]]];
 	DB::_delete($params);
   }
 

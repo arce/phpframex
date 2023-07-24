@@ -3,18 +3,18 @@
  * DB Class
  * @author  Armando Arce <armando.arce@gmail.com>
 */
- 
+
 class DB {
 
   protected static $db_config;
   protected static $dbh;
-  
+
   public function __construct() {
 	if (empty(self::$db_config)) {
 	  self::init();
     }
   }
-  
+
   private static function init() {
     if (empty(self::$db_config)) {
       self::$db_config = parse_ini_file('config.ini');
@@ -26,23 +26,24 @@ class DB {
 	  echo 'Database not found';
 	}
   }
-  
+
   private static function fields($fields) {
 	$result = array_keys($fields);
     return implode(',', $result);
   }
-  
+
   private static function questions($fields) {
 	$result = str_repeat("?,",sizeof($fields));
 	$result = rtrim($result,',');
     return $result;
   }
-  
-  private static function conditions($conditions,$sep) {
-    $result = [];
-    foreach ($conditions as $k => $v)
-      $result[] = $k."= ?";
-    return implode($sep, $result);
+
+  private static function conditions($params) {
+    $result = "";
+    foreach ($params as $item) {
+      $result .= $item[0]." ".$item[1].$item[2]."? ";
+    }
+	return substr($result,4);
   }
 
   private static function execute($query,$values) {
@@ -57,13 +58,13 @@ class DB {
     $stmt->execute();
     self::$dbh->commit();
   }
-  
+
   public static function table($tableName) {
     $qry = new Query();
 	$qry->params['table'] = $tableName;
 	return $qry;
   }
-  
+
   public static function select($query,$values) {
 	if (empty(self::$db_config)) {
 	  self::init();
@@ -80,7 +81,7 @@ class DB {
     }
     return $data;
   }
-  
+
   public static function _select($params) {
     $query = "SELECT ";
     if (array_key_exists('fields',$params))
@@ -90,8 +91,10 @@ class DB {
     $query .= " FROM ".$params['table'];
     $values = [];
     if (array_key_exists('where',$params)) {
-      $query .= " WHERE ".self::conditions($params['where'],' AND ');
-      $values = array_values($params['where']); 
+      $query .= " WHERE ".self::conditions($params['where']);
+      $values = array_map(
+	    function($item){return $item[3];},$params['where']
+	  );
     }
     if (array_key_exists('group',$params))
       $query .= " GROUP BY ".self::fields($params['group']);
@@ -105,11 +108,11 @@ class DB {
       $query .= "OFFSET ".$params['skip'];
     return self::select($query,$values);
   }
- 
+
   public static function insert($query,$values) {
 	self::execute($query,$values);
   }
-   
+
   public static function _insert($params,$item) {
     $query = "INSERT INTO ".$params['table'];
     $query .= " ( ".self::fields($item)." ) ";
@@ -117,11 +120,11 @@ class DB {
     $values = array_values($item);
     self::execute($query,$values);
   }
-  
+
   public static function update($query,$values) {
 	self::execute($query,$values);
   }
-  
+
   public static function _update($params,$item) {
     $query = "UPDATE ".$params['table']." SET ";
     $query .= self::conditions($item,',');
@@ -130,15 +133,20 @@ class DB {
     $values = array_merge($values,array_values($params['where']));
     self::execute($query,$values);
   }
-  
+
   public static function delete($query,$values) {
 	self::execute($query,$values);
   }
-  
+
   public static function _delete($params) {
     $query = "DELETE FROM ".$params['table'];
-    $query .= " WHERE ".self::conditions($params['where'],' AND ');
-    $values = array_values($params['where']);
+    $values = [];
+    if (array_key_exists('where',$params)) {
+      $query .= " WHERE ".self::conditions($params['where']);
+      $values = array_map(
+	    function($item){return $item[3];}, $params['where']
+	  );
+    }
     self::execute($query,$values);
   }
 }
